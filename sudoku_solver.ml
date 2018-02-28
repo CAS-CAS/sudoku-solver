@@ -1,14 +1,4 @@
-(*
- * 盤面
- *  0  1  2  3  4  5  6  7  8
- *  9 10 11 12 13 14 15 16 17
- * 18 19 20 21 22 23 24 25 26
- * 27 28 29 30 31 32 33 34 35
- * 
- *)
-
-
-
+exception Dpll_error;;
 (*
  * 同じ3*3ブロックに属するマスのリスト
  *)
@@ -43,15 +33,18 @@ let rec check_width num_decided n index sudoku_ls =
   match sudoku_ls with
   | []    -> []
   | x::tl ->
-     if n/9=index/9 then 
+     if n/9=index/9 && n<>index then 
        begin
          match x with
-         | [y] ->    x::(check_width num_decided n (index+1) tl)
+         | []  ->    raise Dpll_error
+         | [y] ->    if (y=num_decided)
+                     then raise Dpll_error
+                     else x::(check_width num_decided n (index+1) tl)
          | y::tl2 -> [remove num_decided x]@(check_width num_decided n (index+1) tl)
-         | _ -> failwith "error"
+         | _ -> failwith "error c w in"
        end
      else x::(check_width num_decided n (index+1) tl)
-  | _ -> failwith "error";;
+  | _ -> failwith "error c w out";;
 
 
 (*
@@ -67,15 +60,18 @@ let rec check_height num_decided n index sudoku_ls =
   match sudoku_ls with
   | []    -> []
   | x::tl ->
-     if n mod 9=index mod 9 then 
+     if n mod 9=index mod 9  && n<>index then 
        begin
          match x with
-         | [y] ->    x::(check_height num_decided n (index+1) tl)
+         | []  ->    raise Dpll_error
+         | [y] ->    if (y=num_decided)
+                     then raise Dpll_error
+                     else x::(check_height num_decided n (index+1) tl)
          | y::tl2 -> [remove num_decided x]@(check_height num_decided n (index+1) tl)
-         | _ -> failwith "error"
+         | _ -> failwith "error c h in"
        end
      else x::(check_height num_decided n (index+1) tl)
-  | _ -> failwith "error";;
+  | _ -> failwith "error c h out";;
 
 
 (*
@@ -98,15 +94,18 @@ let rec check_block num_decided n index sudoku_ls =
   match sudoku_ls with
   | []    -> []
   | x::tl ->
-     if (List.exists (fun z -> z = index) (block_search n)) then 
+     if (List.exists (fun z -> z = index) (block_search n)) && n<>index  then 
        begin
          match x with
-         | [y] ->    x::(check_block num_decided n (index+1) tl)
+         | []  ->    raise Dpll_error
+         | [y] ->    if (y=num_decided)
+                     then raise Dpll_error
+                     else x::(check_block num_decided n (index+1) tl)
          | y::tl2 -> [remove num_decided x]@(check_block num_decided n (index+1) tl)
-         | _ -> failwith "error"
+         | _ -> failwith "error c b in"
        end
      else x::(check_block num_decided n (index+1) tl)
-  | _ -> failwith "error";;
+  | _ -> failwith "error c b out";;
 
 
 (*
@@ -121,9 +120,9 @@ let rec check_complete sudoku_ls =
        match x with
        | [y] -> check_complete tl
        | y::tl2 -> false
-       | _ -> failwith "error"
+       | _ -> failwith "error c c"
      end
-  | _ -> failwith "error";;
+  | _ -> failwith "error c c";;
 
 
 
@@ -132,8 +131,9 @@ let rec check_complete sudoku_ls =
  * もし、確定していないマスの場合は0と表示する
  *)
 let rec print_board n sudoku_ls =
+  if n mod 27 = 0 then Printf.printf"\n";
   if n > 80 then ()
-  else
+  else 
     match sudoku_ls with
     | []  -> ()
     | x::tl ->
@@ -143,16 +143,18 @@ let rec print_board n sudoku_ls =
             if n mod 9 = 8 then
               let _ = (Printf.printf"%d\n" List.(hd (hd sudoku_ls))) in (print_board (n+1) tl)
                                                                          
-            else
+            else if n mod 3 = 2 then
+              let _ = (Printf.printf"%d   " List.(hd (hd sudoku_ls))) in (print_board (n+1) tl)
+            else 
               let _ = (Printf.printf"%d " List.(hd (hd sudoku_ls))) in (print_board (n+1) tl)
          | y::tl2 ->
             if n mod 9 = 8 then
               let _ = (Printf.printf"0\n") in (print_board (n+1) tl)
             else
               let _ = (Printf.printf"0 ") in (print_board (n+1) tl)
-       | _ -> failwith "error"
+       | _ -> failwith "error pb"
        end
-    | _ -> failwith "error";;
+    | _ -> failwith "error pb!";;
 
 
 (*
@@ -175,7 +177,7 @@ let rec verify_width num_decided n index sudoku_ls =
          else verify_width num_decided n (index+1) tl
        end
      else verify_width num_decided n (index+1) tl
-  | _ -> failwith "error";;
+  | _ -> failwith "error v w";;
 
 
 (*
@@ -198,7 +200,7 @@ let rec verify_height num_decided n index sudoku_ls =
          else verify_height num_decided n (index+1) tl
        end
      else verify_height num_decided n (index+1) tl
-  | _ -> failwith "error";;
+  | _ -> failwith "error v h";;
 
 
 
@@ -222,7 +224,7 @@ let rec verify_block num_decided n index sudoku_ls =
          else verify_block num_decided n (index+1) tl
        end
      else verify_block num_decided n (index+1) tl
-  | _ -> failwith "error";;
+  | _ -> failwith "error v b";;
 
 
 (*
@@ -237,11 +239,10 @@ let rec change_decided_mass num_decided n index sudoku_ls =
   match sudoku_ls with
   | []    -> []
   | x::tl ->
-     if n = index then 
-       [num_decided]::tl
+     if n = index then
+       num_decided::tl
      else x::(change_decided_mass num_decided n (index+1) tl)
-  | _ -> failwith "error";;
-
+  | _ -> failwith "error cdm";;
 
 (*
  * sudoku_ls : 現在の数独候補リスト
@@ -255,11 +256,29 @@ let rec check_board n mass_ls sudoku_ls=
   | [] -> sudoku_ls
   | ls_hd::tl ->
      if  (verify_width ls_hd n 0 sudoku_ls) || (verify_height ls_hd n 0 sudoku_ls) || (verify_block ls_hd n 0 sudoku_ls)
-     then change_decided_mass ls_hd n 0 sudoku_ls
+     then change_decided_mass [ls_hd] n 0 sudoku_ls
      else check_board n tl sudoku_ls
        
-  | _ -> failwith "error";;
+  | _ -> failwith "error c b";;
 
+
+let rec dpll n sudoku_ls sudoku_origin =
+  match sudoku_ls with
+  | []    -> ([],[])
+  | x::tl ->
+     begin
+       match x with
+       | [y] ->    dpll (n+1) tl sudoku_origin
+       | y::tl2 -> 
+                   ((change_decided_mass [y] n 0 sudoku_origin),
+                        (change_decided_mass tl2 n 0 sudoku_origin))
+       | _ -> failwith "error dpll in"
+     end
+  | _ -> Printf.printf"%d\n\n" n;
+         print_board 0 sudoku_origin;
+         print_string "\n";failwith "error dpll out";;
+     
+                        
 
 
 (*
@@ -272,28 +291,110 @@ let rec check_board n mass_ls sudoku_ls=
  * マスに入る数字が確定していない場合は、そのマスの候補数字を検証して、
  * 同じブロックに属するマスの候補にない場合、数字を確定する。
  *)
-let rec check n sudoku_ls =
+
+
+(*
+print_board 0 sudoku_dpll;
+         print_string "\n";
+ *)
+(*
+let rec check n sudoku_ls sudoku_before stack =
   if (check_complete sudoku_ls)
   then print_board 0 sudoku_ls
-  else if n > 80 then
-    check 0 sudoku_ls
   else
-    let mass_ls = (List.nth sudoku_ls n) in
-    begin 
-      if (List.length mass_ls) = 1
-      then let num_decided = (List.hd mass_ls) in
-           let sudoku_ls2 = (check_width  num_decided n 0  sudoku_ls) in
-           let sudoku_ls3 = (check_height num_decided n 0 sudoku_ls2) in
-           let sudoku_ls4 = (check_block  num_decided n 0 sudoku_ls3) in
-           check (n+1) sudoku_ls4
-           
-      else let sudoku_ls2 = (check_board n mass_ls sudoku_ls) in
-           if sudoku_ls = sudoku_ls2
-           then check (n+1) sudoku_ls2
-           else check n sudoku_ls2
-    end;;
+    if n > 80 then
+      if sudoku_ls = sudoku_before then
+        (
+         let (sudoku_dpll, sudoku_stack) = (dpll 0 sudoku_ls) in
+         check 0 sudoku_dpll sudoku_dpll (sudoku_stack::stack);
+         
+        )
+      else check 0 sudoku_ls sudoku_ls stack
+    else
+      
+      let mass_ls = (List.nth sudoku_ls n) in
+      begin 
+        if (List.length mass_ls) = 1
+        then let num_decided = (List.hd mass_ls) in
+             let sudoku_ls2 =
+               try (check_width  num_decided n 0 sudoku_ls)
+               with Dpll_error -> []
+             in
+             let sudoku_ls3 =
+               try (check_height num_decided n 0 sudoku_ls2)
+               with Dpll_error -> []
+             in
+             let sudoku_ls4 =
+               try (check_block  num_decided n 0 sudoku_ls3)
+               with Dpll_error -> []
+             in
+             if sudoku_ls4 <> []
+             then check (n+1) sudoku_ls4 sudoku_before stack
+             else
+               match stack with
+               | x::tl -> check 0 x x tl
+               | _     -> failwith "error"
+                        
+        else let sudoku_ls2 = (check_board n mass_ls sudoku_ls) in
+             if sudoku_ls = sudoku_ls2
+             then check (n+1) sudoku_ls2 sudoku_before stack
+             else check n sudoku_ls2 sudoku_before stack
+      end;;
+ *)
+
+let rec check n sudoku_ls sudoku_before stack=
+  if (check_complete sudoku_ls)
+  then print_board 0 sudoku_ls
+  else
+    if n > 80 then
+      if sudoku_ls = sudoku_before then
+        (
+          
+          let (sudoku_dpll, sudoku_stack) = (dpll 0 sudoku_ls sudoku_ls) in
+          if sudoku_dpll = []
+          then
+            match stack with
+            | x::tl -> check 0 x x tl
+            | _     -> failwith "error stack"
+          else
+            (check 0 sudoku_dpll sudoku_dpll (sudoku_stack::stack);)
+         
+        )
+      else check 0 sudoku_ls sudoku_ls stack
+    else
+      
+      let mass_ls = (List.nth sudoku_ls n) in
+      begin 
+        if (List.length mass_ls) = 1
+        then let num_decided = (List.hd mass_ls) in
+             let sudoku_ls2 =
+               try (check_width  num_decided n 0 sudoku_ls)
+               with Dpll_error -> []
+             in
+             let sudoku_ls3 =
+               try (check_height num_decided n 0 sudoku_ls2)
+               with Dpll_error -> []
+             in
+             let sudoku_ls4 =
+               try (check_block  num_decided n 0 sudoku_ls3)
+               with Dpll_error -> []
+             in
+             if sudoku_ls4 <> []
+             then check (n+1) sudoku_ls4 sudoku_before stack
+             else
+               match stack with
+               | x::tl -> check 0 x x tl
+               | _     -> failwith "error mass stack"
+                        
+        else let sudoku_ls2 = (check_board n mass_ls sudoku_ls) in
+             if sudoku_ls = sudoku_ls2
+             then check (n+1) sudoku_ls2 sudoku_before stack
+             else check n sudoku_ls2 sudoku_before stack
+      end;;
+
 
 (* 入力値 *)
+(*
 let sudoku =
   [  0;0;6; 0;0;0; 0;0;1
     ;0;7;0; 0;6;0; 0;5;0
@@ -306,7 +407,8 @@ let sudoku =
     ;0;0;1; 2;0;5; 0;0;3
     ;0;6;0; 0;7;0; 0;8;0
     ;2;0;0; 0;0;0; 4;0;0];;
-
+ *)
+(*
 let sudoku = 
   [  0;2;0; 0;0;0; 0;0;9
     ;4;0;1; 0;0;5; 0;0;3
@@ -319,7 +421,7 @@ let sudoku =
     ;8;6;0; 5;7;0; 0;0;0
     ;1;3;0; 0;0;8; 0;9;0
     ;0;0;0; 0;0;0; 0;0;5];;
-
+ *)
 let sudoku = 
   [  0;0;0; 0;0;0; 0;0;0
     ;0;0;0; 0;0;1; 0;8;0
@@ -333,6 +435,19 @@ let sudoku =
     ;7;0;0; 0;6;0; 0;0;0
     ;0;0;0; 0;2;0; 0;0;0];;
 
+let sudoku = 
+  [  0;3;0; 0;9;0; 0;1;0
+    ;1;0;9; 0;8;0; 0;0;6
+    ;6;0;0; 7;0;0; 0;0;0
+    
+    ;0;0;1; 0;0;0; 8;0;0
+    ;2;0;6; 0;0;8; 0;0;0
+    ;0;0;0; 0;0;3; 0;4;0
+    
+    ;0;0;7; 6;0;1; 0;0;8
+    ;0;0;2; 0;0;0; 0;3;4
+    ;0;0;0; 0;0;0; 9;0;0];;
+ 
 
 (*
  * 入力として与えられた数独を、
@@ -344,4 +459,4 @@ let sudoku_list =
   (List.map (fun x -> if x = 0 then [1;2;3;4;5;6;7;8;9] else [x]) sudoku);;
 
 
-let _ = (check 0 sudoku_list);;
+check 0 sudoku_list sudoku_list [];;
